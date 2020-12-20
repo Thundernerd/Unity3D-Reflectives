@@ -80,11 +80,30 @@ namespace TNRD.Reflectives.Exporters
             bodyWriter.WriteLine("get");
             bodyWriter.WriteLine("{");
             bodyWriter.Indent++;
-            bodyWriter.WriteLine($"object _temp = field_{memberName}.GetValue());");
-            bodyWriter.WriteLine($"return _temp == null ? null : new {typeName}(_temp);");
+            if (field.FieldType.IsEnum)
+            {
+                Type underlyingType = field.FieldType.GetEnumUnderlyingType();
+                bodyWriter.WriteLine($"object _temp = ({underlyingType.GetNiceName()})field_{memberName}.GetValue();");
+                bodyWriter.WriteLine($"return ({typeName})_temp;");
+            }
+            else
+            {
+                bodyWriter.WriteLine($"object _temp = field_{memberName}.GetValue());");
+                bodyWriter.WriteLine($"return _temp == null ? null : new {typeName}(_temp);");
+            }
+
             bodyWriter.Indent--;
             bodyWriter.WriteLine("}");
-            bodyWriter.WriteLine($"set => field_{memberName}.SetValue(value.Instance);");
+            if (field.FieldType.IsEnum)
+            {
+                Type underlyingType = field.FieldType.GetEnumUnderlyingType();
+                bodyWriter.WriteLine($"set => field_{memberName}.SetValue(({underlyingType.GetNiceName()})value.Instance);");
+            }
+            else
+            {
+                bodyWriter.WriteLine($"set => field_{memberName}.SetValue(value.Instance);");
+            }
+
             bodyWriter.Indent--;
             bodyWriter.WriteLine("}");
         }

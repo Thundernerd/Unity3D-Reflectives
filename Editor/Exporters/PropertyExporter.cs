@@ -92,15 +92,34 @@ namespace TNRD.Reflectives.Exporters
                 bodyWriter.WriteLine("get");
                 bodyWriter.WriteLine("{");
                 bodyWriter.Indent++;
-                bodyWriter.WriteLine($"object _temp = property_{memberName}.GetValue();");
-                bodyWriter.WriteLine($"return _temp == null ? null : new {typeName}(_temp);");
+
+                if (property.PropertyType.IsEnum)
+                {
+                    Type underlyingType = property.PropertyType.GetEnumUnderlyingType();
+                    bodyWriter.WriteLine($"object _temp = ({underlyingType.GetNiceName()})property_{memberName}.GetValue();");
+                    bodyWriter.WriteLine($"return ({typeName})_temp;");
+                }
+                else
+                {
+                    bodyWriter.WriteLine($"object _temp = property_{memberName}.GetValue();");
+                    bodyWriter.WriteLine($"return _temp == null ? null : new {typeName}(_temp);");
+                }
+
                 bodyWriter.Indent--;
                 bodyWriter.WriteLine("}");
             }
 
             if (property.CanWrite)
             {
-                bodyWriter.WriteLine($"set => property_{memberName}.SetValue(value.Instance);");
+                if (property.PropertyType.IsEnum)
+                {
+                    Type underlyingType = property.PropertyType.GetEnumUnderlyingType();
+                    bodyWriter.WriteLine($"set => property_{memberName}.SetValue(({underlyingType.GetNiceName()})value);");
+                }
+                else
+                {
+                    bodyWriter.WriteLine($"set => property_{memberName}.SetValue(value.Instance);");
+                }
             }
 
             bodyWriter.Indent--;

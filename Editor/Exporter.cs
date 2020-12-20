@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using Sirenix.Utilities;
 using TNRD.Reflectives.Exporters;
 
 namespace TNRD.Reflectives
@@ -23,6 +24,62 @@ namespace TNRD.Reflectives
         }
 
         public void Export(Type type)
+        {
+            string output = string.Empty;
+
+            if (type.IsEnum)
+            {
+                output = ExportEnum(type);
+            }
+            else
+            {
+                output = ExportClass(type);
+            }
+
+            File.WriteAllText(Path.Combine(outputDirectory, type.Name + ".Generated.cs"), output);
+        }
+
+        private string ExportEnum(Type type)
+        {
+            Type underlyingType = type.GetEnumUnderlyingType();
+            StringBuilder builder = new StringBuilder();
+            IndentedTextWriter writer = new IndentedTextWriter(new StringWriter(builder), "\t");
+
+            if (!string.IsNullOrEmpty(@namespace))
+            {
+                writer.WriteLine($"namespace {@namespace}");
+                writer.WriteLine("{");
+                writer.Indent++;
+            }
+
+            writer.WriteLine($"public enum {type.GetNiceName()} : {underlyingType.GetNiceName()}");
+            writer.WriteLine("{");
+            writer.Indent++;
+
+            string[] names = Enum.GetNames(type);
+            Array values = Enum.GetValues(type);
+
+            for (int i = 0; i < names.Length; i++)
+            {
+                string name = names[i];
+                object value = Convert.ChangeType(values.GetValue(i), underlyingType);
+                string suffix = i < names.Length - 1 ? "," : string.Empty;
+                writer.WriteLine($"{name}={value}{suffix}");
+            }
+
+            writer.Indent--;
+            writer.WriteLine("}");
+
+            if (!string.IsNullOrEmpty(@namespace))
+            {
+                writer.Indent--;
+                writer.WriteLine("}");
+            }
+
+            return builder.ToString();
+        }
+
+        private string ExportClass(Type type)
         {
             StringBuilder definitionBuilder = new StringBuilder();
             StringBuilder constructionBuilder = new StringBuilder();
@@ -82,7 +139,7 @@ namespace TNRD.Reflectives
                 mainWriter.WriteLine("}");
             }
 
-            File.WriteAllText(Path.Combine(outputDirectory, type.Name + ".Generated.cs"), builder.ToString());
+            return builder.ToString();
         }
 
         private void WriteHeader(StringBuilder builder, Type type)
@@ -138,7 +195,6 @@ namespace TNRD.Reflectives
             writer.WriteLine("}");
             writer.WriteLine("partial void Initialize();");
             writer.WriteLine(bodyBuilder.ToString().TrimEnd());
-            writer.WriteLine();
             writer.WriteLine("public static Type GetOriginalType()");
             writer.WriteLine("{");
             writer.Indent++;

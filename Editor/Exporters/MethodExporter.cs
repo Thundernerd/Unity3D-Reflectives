@@ -130,7 +130,15 @@ namespace TNRD.Reflectives.Exporters
 
             foreach (ParameterInfo parameter in parameters)
             {
-                builder.Append($"{parameter.Name},");
+                if (parameter.ParameterType.IsEnum)
+                {
+                    Type underlyingType = parameter.ParameterType.GetEnumUnderlyingType();
+                    builder.Append($"({underlyingType.GetNiceName()}){parameter.Name},");
+                }
+                else
+                {
+                    builder.Append($"{parameter.Name},");
+                }
             }
 
             return builder.ToString().TrimEnd(',');
