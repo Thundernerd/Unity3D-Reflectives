@@ -36,7 +36,7 @@ namespace TNRD.Reflectives
                 output = ExportClass(type);
             }
 
-            File.WriteAllText(Path.Combine(outputDirectory, type.Name + ".Generated.cs"), output);
+            File.WriteAllText(Path.Combine(outputDirectory, $"{type.GetNiceName().Replace(".", "_")}.Generated.cs"), output);
         }
 
         private string ExportEnum(Type type)
@@ -52,7 +52,7 @@ namespace TNRD.Reflectives
                 writer.Indent++;
             }
 
-            writer.WriteLine($"public enum {type.GetNiceName()} : {underlyingType.GetNiceName()}");
+            writer.WriteLine($"public enum {type.GetNiceName().Replace(".", "_")} : {underlyingType.GetNiceName()}");
             writer.WriteLine("{");
             writer.Indent++;
 

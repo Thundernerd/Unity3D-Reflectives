@@ -28,7 +28,7 @@ namespace TNRD.Reflectives.Exporters
 
         private void ExportProperty(PropertyInfo property, IndentedTextWriter definitionWriter, IndentedTextWriter constructionWriter, IndentedTextWriter bodyWriter)
         {
-            string typeName = property.PropertyType.GetNiceName();
+            string typeName = property.PropertyType.GetNiceName().Replace(".", "_");
             string memberName = property.GetNiceName();
 
             if (IsPublic(property.PropertyType))
@@ -96,7 +96,7 @@ namespace TNRD.Reflectives.Exporters
                 if (property.PropertyType.IsEnum)
                 {
                     Type underlyingType = property.PropertyType.GetEnumUnderlyingType();
-                    bodyWriter.WriteLine($"object _temp = ({underlyingType.GetNiceName()})property_{memberName}.GetValue();");
+                    bodyWriter.WriteLine($"object _temp = ({underlyingType.GetNiceName().Replace(".", "_")})property_{memberName}.GetValue();");
                     bodyWriter.WriteLine($"return ({typeName})_temp;");
                 }
                 else
@@ -114,7 +114,7 @@ namespace TNRD.Reflectives.Exporters
                 if (property.PropertyType.IsEnum)
                 {
                     Type underlyingType = property.PropertyType.GetEnumUnderlyingType();
-                    bodyWriter.WriteLine($"set => property_{memberName}.SetValue(({underlyingType.GetNiceName()})value);");
+                    bodyWriter.WriteLine($"set => property_{memberName}.SetValue(({underlyingType.GetNiceName().Replace(".", "_")})value);");
                 }
                 else
                 {

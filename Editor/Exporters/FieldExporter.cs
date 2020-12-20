@@ -28,7 +28,7 @@ namespace TNRD.Reflectives.Exporters
 
         private void ExportField(FieldInfo field, IndentedTextWriter definitionWriter, IndentedTextWriter constructionWriter, IndentedTextWriter bodyWriter)
         {
-            string typeName = field.FieldType.GetNiceName();
+            string typeName = field.FieldType.GetNiceName().Replace(".", "_");
             string memberName = field.GetNiceName();
 
             if (IsPublic(field.FieldType))
@@ -83,7 +83,7 @@ namespace TNRD.Reflectives.Exporters
             if (field.FieldType.IsEnum)
             {
                 Type underlyingType = field.FieldType.GetEnumUnderlyingType();
-                bodyWriter.WriteLine($"object _temp = ({underlyingType.GetNiceName()})field_{memberName}.GetValue();");
+                bodyWriter.WriteLine($"object _temp = ({underlyingType.GetNiceName().Replace(".", "_")})field_{memberName}.GetValue();");
                 bodyWriter.WriteLine($"return ({typeName})_temp;");
             }
             else
@@ -97,7 +97,7 @@ namespace TNRD.Reflectives.Exporters
             if (field.FieldType.IsEnum)
             {
                 Type underlyingType = field.FieldType.GetEnumUnderlyingType();
-                bodyWriter.WriteLine($"set => field_{memberName}.SetValue(({underlyingType.GetNiceName()})value.Instance);");
+                bodyWriter.WriteLine($"set => field_{memberName}.SetValue(({underlyingType.GetNiceName().Replace(".", "_")})value);");
             }
             else
             {
