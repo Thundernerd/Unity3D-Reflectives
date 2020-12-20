@@ -43,7 +43,7 @@ namespace TNRD.Reflectives.Exporters
         )
         {
             string memberName = method.Name;
-            string returnTypeName = method.ReturnType.Name;
+            string returnTypeName = method.ReturnType.GetNiceName().Replace(".", "_");
             string paramsNamesWithType = GetMethodParametersWithType(method);
             string paramsNamesWithoutType = GetMethodParametersWithoutType(method);
 
@@ -65,7 +65,20 @@ namespace TNRD.Reflectives.Exporters
                 }
                 else
                 {
-                    bodyWriter.WriteLine($"return new {returnTypeName}(method_{memberName}_{index}.Invoke({paramsNamesWithoutType}));");
+                    string invokeLine = $"method_{memberName}_{index}.Invoke({paramsNamesWithoutType})";
+
+                    if (method.ReturnType.IsEnum)
+                    {
+                        bodyWriter.WriteLine($"return ({returnTypeName})({method.ReturnType.GetEnumUnderlyingType().GetNiceName()}){invokeLine};");
+                    }
+                    else if (IsEnumerableInterface(method.ReturnType))
+                    {
+                        bodyWriter.WriteLine($"return Utilities.GenerateEnumerable<{method.ReturnType.GetGenericArguments()[0].GetNiceName()}>({invokeLine});");
+                    }
+                    else
+                    {
+                        bodyWriter.WriteLine($"return new {returnTypeName}({invokeLine});");
+                    }
                 }
 
                 bodyWriter.Indent--;
