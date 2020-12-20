@@ -86,6 +86,11 @@ namespace TNRD.Reflectives.Exporters
                 bodyWriter.WriteLine($"object _temp = ({underlyingType.GetNiceName().Replace(".", "_")})field_{memberName}.GetValue();");
                 bodyWriter.WriteLine($"return ({typeName})_temp;");
             }
+            else if (IsEnumerableInterface(field.FieldType))
+            {
+                bodyWriter.WriteLine($"object _temp = field_{memberName}.GetValue();");
+                bodyWriter.WriteLine("return _temp == null ? null : Utilities.GenerateEnumerable<{field.FieldType.GetGenericArguments()[0].GetNiceName()}>(_temp);");
+            }
             else
             {
                 bodyWriter.WriteLine($"object _temp = field_{memberName}.GetValue());");

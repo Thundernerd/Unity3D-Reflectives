@@ -1,5 +1,6 @@
 using System;
 using System.CodeDom.Compiler;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -70,6 +71,11 @@ namespace TNRD.Reflectives.Exporters
                 return type.IsPublic;
 
             return type.IsPublic && genericArguments.All(IsPublic);
+        }
+
+        protected static bool IsEnumerableInterface(Type type)
+        {
+            return type.IsInterface && typeof(IEnumerable).IsAssignableFrom(type);
         }
     }
 }

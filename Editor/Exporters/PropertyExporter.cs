@@ -1,5 +1,6 @@
 using System;
 using System.CodeDom.Compiler;
+using System.Collections;
 using System.Linq;
 using System.Reflection;
 using Sirenix.Utilities;
@@ -98,6 +99,11 @@ namespace TNRD.Reflectives.Exporters
                     Type underlyingType = property.PropertyType.GetEnumUnderlyingType();
                     bodyWriter.WriteLine($"object _temp = ({underlyingType.GetNiceName().Replace(".", "_")})property_{memberName}.GetValue();");
                     bodyWriter.WriteLine($"return ({typeName})_temp;");
+                }
+                else if (IsEnumerableInterface(property.PropertyType))
+                {
+                    bodyWriter.WriteLine($"object _temp = property_{memberName}.GetValue();");
+                    bodyWriter.WriteLine($"return _temp == null ? null : Utilities.GenerateEnumerable<{property.PropertyType.GetGenericArguments()[0].GetNiceName()}>(_temp);");
                 }
                 else
                 {
