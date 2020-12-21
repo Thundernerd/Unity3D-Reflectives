@@ -81,18 +81,21 @@ namespace TNRD.Reflectives.Exporters
             bodyWriter.WriteLine("{");
             bodyWriter.Indent++;
 
+            bool isEnumerable = IsEnumerable(field.FieldType);
+            bool isDictionary = IsDictionary(field.FieldType);
+
             if (field.FieldType.IsEnum)
             {
                 Type underlyingType = field.FieldType.GetEnumUnderlyingType();
                 bodyWriter.WriteLine($"object _temp = ({underlyingType.GetNiceName().Replace(".", "_")})field_{memberName}.GetValue();");
                 bodyWriter.WriteLine($"return ({typeName})_temp;");
             }
-            else if (IsEnumerable(field.FieldType))
+            else if (isEnumerable && !isDictionary)
             {
                 bodyWriter.WriteLine($"object _temp = field_{memberName}.GetValue();");
-                bodyWriter.WriteLine("return _temp == null ? null : Utilities.GenerateEnumerable<{field.FieldType.GetGenericArguments()[0].GetNiceName()}>(_temp);");
+                bodyWriter.WriteLine($"return _temp == null ? null : Utilities.GenerateEnumerable<{field.FieldType.GetGenericArguments()[0].GetNiceName()}>(_temp);");
             }
-            else if (IsDictionary(field.FieldType))
+            else if (isDictionary)
             {
                 string genericKeyName = field.FieldType.GetGenericArguments()[0].GetNiceName();
                 string genericValueName = field.FieldType.GetGenericArguments()[1].GetNiceName();
@@ -112,11 +115,7 @@ namespace TNRD.Reflectives.Exporters
                 Type underlyingType = field.FieldType.GetEnumUnderlyingType();
                 bodyWriter.WriteLine($"set => field_{memberName}.SetValue(({underlyingType.GetNiceName().Replace(".", "_")})value);");
             }
-            else if (IsEnumerable(field.FieldType))
-            {
-                // Not supported
-            }
-            else if (IsDictionary(field.FieldType))
+            else if (isEnumerable || isDictionary)
             {
                 // Not supported
             }

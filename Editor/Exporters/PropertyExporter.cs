@@ -88,6 +88,9 @@ namespace TNRD.Reflectives.Exporters
             bodyWriter.WriteLine("{");
             bodyWriter.Indent++;
 
+            bool isEnumerable = IsEnumerable(property.PropertyType);
+            bool isDictionary = IsDictionary(property.PropertyType);
+
             if (property.CanRead)
             {
                 bodyWriter.WriteLine("get");
@@ -100,13 +103,13 @@ namespace TNRD.Reflectives.Exporters
                     bodyWriter.WriteLine($"object _temp = ({underlyingType.GetNiceName().Replace(".", "_")})property_{memberName}.GetValue();");
                     bodyWriter.WriteLine($"return ({typeName})_temp;");
                 }
-                else if (IsEnumerable(property.PropertyType))
+                else if (isEnumerable && !isDictionary)
                 {
                     string genericArgumentName = property.PropertyType.GetGenericArguments()[0].GetNiceName();
                     bodyWriter.WriteLine($"object _temp = property_{memberName}.GetValue();");
                     bodyWriter.WriteLine($"return _temp == null ? null : Utilities.GenerateEnumerable<{genericArgumentName}>(_temp);");
                 }
-                else if (IsDictionary(property.PropertyType))
+                else if (isDictionary)
                 {
                     string genericKeyName = property.PropertyType.GetGenericArguments()[0].GetNiceName();
                     string genericValueName = property.PropertyType.GetGenericArguments()[1].GetNiceName();
@@ -130,11 +133,7 @@ namespace TNRD.Reflectives.Exporters
                     Type underlyingType = property.PropertyType.GetEnumUnderlyingType();
                     bodyWriter.WriteLine($"set => property_{memberName}.SetValue(({underlyingType.GetNiceName().Replace(".", "_")})value);");
                 }
-                else if (IsEnumerable(property.PropertyType))
-                {
-                    // Not supported
-                }
-                else if (IsDictionary(property.PropertyType))
+                else if (isEnumerable || isDictionary)
                 {
                     // Not supported
                 }
