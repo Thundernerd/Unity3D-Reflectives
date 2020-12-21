@@ -6,7 +6,7 @@ namespace TNRD.Reflectives
 {
     public static class Utilities
     {
-        public static IEnumerable<T> GenerateEnumerable<T>(object value) where T : ReflectiveClass
+        public static IEnumerable<T> GenerateEnumerable<T>(object value)
         {
             List<T> items = new List<T>();
 
@@ -30,6 +30,50 @@ namespace TNRD.Reflectives
             }
 
             return items;
+        }
+
+        public static Dictionary<TKey, TValue> GenerateDictionary<TKey, TValue>(object data)
+        {
+            IDictionary dict = (IDictionary) data;
+            return GenerateDictionary<TKey, TValue>(dict);
+        }
+
+        private static Dictionary<TKey, TValue> GenerateDictionary<TKey, TValue>(IDictionary dictionary)
+        {
+            Dictionary<TKey, TValue> result = new Dictionary<TKey, TValue>();
+
+            bool keyIsReflective = ImplementsOrInherits(typeof(TKey), typeof(ReflectiveClass));
+            bool valueIsReflective = ImplementsOrInherits(typeof(TValue), typeof(ReflectiveClass));
+
+            foreach (DictionaryEntry entry in dictionary)
+            {
+                TKey key = default;
+                TValue value = default;
+
+                if (keyIsReflective)
+                {
+                    object instance = Activator.CreateInstance(typeof(TKey), entry.Key);
+                    key = (TKey) instance;
+                }
+                else
+                {
+                    key = (TKey) entry.Key;
+                }
+
+                if (valueIsReflective)
+                {
+                    object instance = Activator.CreateInstance(typeof(TValue), entry.Value);
+                    value = (TValue) instance;
+                }
+                else
+                {
+                    value = (TValue) entry.Value;
+                }
+
+                result.Add(key, value);
+            }
+
+            return result;
         }
 
         private static bool ImplementsOrInherits(Type type, Type implementsOrInherits)

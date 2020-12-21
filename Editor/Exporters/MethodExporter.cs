@@ -71,7 +71,7 @@ namespace TNRD.Reflectives.Exporters
                     {
                         bodyWriter.WriteLine($"return ({returnTypeName})({method.ReturnType.GetEnumUnderlyingType().GetNiceName()}){invokeLine};");
                     }
-                    else if (IsEnumerableInterface(method.ReturnType))
+                    else if (IsEnumerable(method.ReturnType))
                     {
                         bodyWriter.WriteLine($"return Utilities.GenerateEnumerable<{method.ReturnType.GetGenericArguments()[0].GetNiceName()}>({invokeLine});");
                     }

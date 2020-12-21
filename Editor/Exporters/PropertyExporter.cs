@@ -100,10 +100,18 @@ namespace TNRD.Reflectives.Exporters
                     bodyWriter.WriteLine($"object _temp = ({underlyingType.GetNiceName().Replace(".", "_")})property_{memberName}.GetValue();");
                     bodyWriter.WriteLine($"return ({typeName})_temp;");
                 }
-                else if (IsEnumerableInterface(property.PropertyType))
+                else if (IsEnumerable(property.PropertyType))
                 {
+                    string genericArgumentName = property.PropertyType.GetGenericArguments()[0].GetNiceName();
                     bodyWriter.WriteLine($"object _temp = property_{memberName}.GetValue();");
-                    bodyWriter.WriteLine($"return _temp == null ? null : Utilities.GenerateEnumerable<{property.PropertyType.GetGenericArguments()[0].GetNiceName()}>(_temp);");
+                    bodyWriter.WriteLine($"return _temp == null ? null : Utilities.GenerateEnumerable<{genericArgumentName}>(_temp);");
+                }
+                else if (IsDictionary(property.PropertyType))
+                {
+                    string genericKeyName = property.PropertyType.GetGenericArguments()[0].GetNiceName();
+                    string genericValueName = property.PropertyType.GetGenericArguments()[1].GetNiceName();
+                    bodyWriter.WriteLine($"object _temp = property_{memberName}.GetValue();");
+                    bodyWriter.WriteLine($"return _temp == null ? null : Utilities.GenerateDictionary<{genericKeyName},{genericValueName}>(_temp);");
                 }
                 else
                 {
@@ -121,6 +129,14 @@ namespace TNRD.Reflectives.Exporters
                 {
                     Type underlyingType = property.PropertyType.GetEnumUnderlyingType();
                     bodyWriter.WriteLine($"set => property_{memberName}.SetValue(({underlyingType.GetNiceName().Replace(".", "_")})value);");
+                }
+                else if (IsEnumerable(property.PropertyType))
+                {
+                    // Not supported
+                }
+                else if (IsDictionary(property.PropertyType))
+                {
+                    // Not supported
                 }
                 else
                 {

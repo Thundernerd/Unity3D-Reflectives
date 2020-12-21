@@ -80,20 +80,28 @@ namespace TNRD.Reflectives.Exporters
             bodyWriter.WriteLine("get");
             bodyWriter.WriteLine("{");
             bodyWriter.Indent++;
+
             if (field.FieldType.IsEnum)
             {
                 Type underlyingType = field.FieldType.GetEnumUnderlyingType();
                 bodyWriter.WriteLine($"object _temp = ({underlyingType.GetNiceName().Replace(".", "_")})field_{memberName}.GetValue();");
                 bodyWriter.WriteLine($"return ({typeName})_temp;");
             }
-            else if (IsEnumerableInterface(field.FieldType))
+            else if (IsEnumerable(field.FieldType))
             {
                 bodyWriter.WriteLine($"object _temp = field_{memberName}.GetValue();");
                 bodyWriter.WriteLine("return _temp == null ? null : Utilities.GenerateEnumerable<{field.FieldType.GetGenericArguments()[0].GetNiceName()}>(_temp);");
             }
+            else if (IsDictionary(field.FieldType))
+            {
+                string genericKeyName = field.FieldType.GetGenericArguments()[0].GetNiceName();
+                string genericValueName = field.FieldType.GetGenericArguments()[1].GetNiceName();
+                bodyWriter.WriteLine($"object _temp = field_{memberName}.GetValue();");
+                bodyWriter.WriteLine($"return _temp == null ? null : Utilities.GenerateDictionary<{genericKeyName},{genericValueName}>(_temp);");
+            }
             else
             {
-                bodyWriter.WriteLine($"object _temp = field_{memberName}.GetValue());");
+                bodyWriter.WriteLine($"object _temp = field_{memberName}.GetValue();");
                 bodyWriter.WriteLine($"return _temp == null ? null : new {typeName}(_temp);");
             }
 
@@ -103,6 +111,14 @@ namespace TNRD.Reflectives.Exporters
             {
                 Type underlyingType = field.FieldType.GetEnumUnderlyingType();
                 bodyWriter.WriteLine($"set => field_{memberName}.SetValue(({underlyingType.GetNiceName().Replace(".", "_")})value);");
+            }
+            else if (IsEnumerable(field.FieldType))
+            {
+                // Not supported
+            }
+            else if (IsDictionary(field.FieldType))
+            {
+                // Not supported
             }
             else
             {

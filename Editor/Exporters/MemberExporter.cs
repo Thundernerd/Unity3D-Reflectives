@@ -73,9 +73,14 @@ namespace TNRD.Reflectives.Exporters
             return type.IsPublic && genericArguments.All(IsPublic);
         }
 
-        protected static bool IsEnumerableInterface(Type type)
+        protected static bool IsEnumerable(Type type)
         {
-            return type.IsInterface && typeof(IEnumerable).IsAssignableFrom(type);
+            return typeof(IEnumerable).IsAssignableFrom(type);
+        }
+
+        protected static bool IsDictionary(Type type)
+        {
+            return typeof(IDictionary).IsAssignableFrom(type);
         }
     }
 }
