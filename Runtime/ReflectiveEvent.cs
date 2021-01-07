@@ -5,7 +5,7 @@ using JetBrains.Annotations;
 namespace TNRD.Reflectives
 {
     /// <summary>
-    /// 
+    /// A wrapper around an event that is access through reflection
     /// </summary>
     [PublicAPI]
     public class ReflectiveEvent
@@ -14,12 +14,12 @@ namespace TNRD.Reflectives
         private readonly EventInfo eventInfo;
 
         /// <summary>
-        /// 
+        /// Creates a new reflective event
         /// </summary>
-        /// <param name="definingType"></param>
-        /// <param name="name"></param>
-        /// <param name="flags"></param>
-        /// <param name="instance"></param>
+        /// <param name="definingType">The type that defines this event</param>
+        /// <param name="name">The name of the event</param>
+        /// <param name="flags">The binding flags that should be used to find the event</param>
+        /// <param name="instance">The instance that can be used for subscribing to and/or unsubscribing from the event</param>
         [PublicAPI]
         public ReflectiveEvent(Type definingType, string name, BindingFlags flags, object instance)
         {
@@ -28,10 +28,10 @@ namespace TNRD.Reflectives
         }
 
         /// <summary>
-        /// 
+        /// Subscribes the given delegate to the event
         /// </summary>
-        /// <param name="delegate"></param>
-        /// <returns></returns>
+        /// <param name="delegate">The delegate to subscribe to the event</param>
+        /// <returns>A converted delegate that matches the definition of the actual event. Used for unsubscribing</returns>
         [PublicAPI]
         public Delegate Subscribe(Delegate @delegate)
         {
@@ -41,9 +41,9 @@ namespace TNRD.Reflectives
         }
 
         /// <summary>
-        /// 
+        /// Unsubscribes the given delegate from the event
         /// </summary>
-        /// <param name="delegate"></param>
+        /// <param name="delegate">The delegate received from <see cref="Subscribe"/> when registering</param>
         [PublicAPI]
         public void Unsubscribe(Delegate @delegate)
         {

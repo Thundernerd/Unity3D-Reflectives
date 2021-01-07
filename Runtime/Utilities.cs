@@ -6,7 +6,7 @@ using JetBrains.Annotations;
 namespace TNRD.Reflectives
 {
     /// <summary>
-    /// 
+    /// A couple of utilities that can be used with Reflectives
     /// </summary>
     [PublicAPI]
     public static class Utilities
@@ -97,11 +97,11 @@ namespace TNRD.Reflectives
         }
 
         /// <summary>
-        /// 
+        /// Checks if the given type implements or inherits another type
         /// </summary>
-        /// <param name="type"></param>
-        /// <param name="implementsOrInherits"></param>
-        /// <returns></returns>
+        /// <param name="type">The type to check</param>
+        /// <param name="implementsOrInherits">The type it needs to implement or inherit</param>
+        /// <returns>true if it implements or inherits, otherwise false</returns>
         [PublicAPI]
         public static bool ImplementsOrInherits(Type type, Type implementsOrInherits)
         {

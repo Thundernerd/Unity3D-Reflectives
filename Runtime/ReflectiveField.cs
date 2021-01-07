@@ -5,7 +5,7 @@ using JetBrains.Annotations;
 namespace TNRD.Reflectives
 {
     /// <summary>
-    /// 
+    /// A wrapper around a field that is accessed through reflection
     /// </summary>
     [PublicAPI]
     public class ReflectiveField
@@ -14,12 +14,12 @@ namespace TNRD.Reflectives
         private readonly FieldInfo fieldInfo;
 
         /// <summary>
-        /// 
+        /// Creates a new reflective field
         /// </summary>
-        /// <param name="definingType"></param>
-        /// <param name="name"></param>
-        /// <param name="flags"></param>
-        /// <param name="instance"></param>
+        /// <param name="definingType">The type that defines this field</param>
+        /// <param name="name">The name of the field</param>
+        /// <param name="flags">The binding flags that should be used to find the field</param>
+        /// <param name="instance">The instance that can be used for getting and/or setting the value</param>
         [PublicAPI]
         public ReflectiveField(Type definingType, string name, BindingFlags flags, object instance)
         {
@@ -28,9 +28,9 @@ namespace TNRD.Reflectives
         }
 
         /// <summary>
-        /// 
+        /// Sets the value on the instance
         /// </summary>
-        /// <param name="value"></param>
+        /// <param name="value">The value to set</param>
         [PublicAPI]
         public void SetValue(object value)
         {
@@ -38,9 +38,9 @@ namespace TNRD.Reflectives
         }
 
         /// <summary>
-        /// 
+        /// Gets the value from the instance
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The value as an object</returns>
         [PublicAPI]
         public object GetValue()
         {
@@ -49,28 +49,22 @@ namespace TNRD.Reflectives
     }
 
     /// <summary>
-    /// 
+    /// A typed wrapper around a field that is access through reflection
     /// </summary>
-    /// <typeparam name="T"></typeparam>
+    /// <typeparam name="T">The type of the field</typeparam>
     [PublicAPI]
     public class ReflectiveField<T> : ReflectiveField
     {
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="definingType"></param>
-        /// <param name="name"></param>
-        /// <param name="flags"></param>
-        /// <param name="instance"></param>
+        /// <inheritdoc/>
         [PublicAPI]
         public ReflectiveField(Type definingType, string name, BindingFlags flags, object instance) : base(definingType, name, flags, instance)
         {
         }
 
         /// <summary>
-        /// 
+        /// Gets the typed value from the instance
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The value as the generic type</returns>
         [PublicAPI]
         public new T GetValue()
         {

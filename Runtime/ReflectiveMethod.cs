@@ -6,7 +6,7 @@ using JetBrains.Annotations;
 namespace TNRD.Reflectives
 {
     /// <summary>
-    /// 
+    /// A wrapper around a method that is accessed through reflection
     /// </summary>
     [PublicAPI]
     public class ReflectiveMethod
@@ -15,13 +15,13 @@ namespace TNRD.Reflectives
         private readonly MethodInfo methodInfo;
 
         /// <summary>
-        /// 
+        /// Creates a new reflective method
         /// </summary>
-        /// <param name="definingType"></param>
-        /// <param name="name"></param>
-        /// <param name="flags"></param>
-        /// <param name="instance"></param>
-        /// <param name="types"></param>
+        /// <param name="definingType">The type that defines this method</param>
+        /// <param name="name">The name of the method</param>
+        /// <param name="flags">The binding flags that should be used to find the method</param>
+        /// <param name="instance">The instance that can be used for invoking the method</param>
+        /// <param name="types">The types of the parameters this method has, used for finding the method if there are overloads</param>
         [PublicAPI]
         public ReflectiveMethod(Type definingType, string name, BindingFlags flags, object instance, Type[] types = null)
         {
@@ -113,10 +113,10 @@ namespace TNRD.Reflectives
         }
 
         /// <summary>
-        /// 
+        /// Invokes the method on the instance with the given parameters
         /// </summary>
-        /// <param name="parameters"></param>
-        /// <returns></returns>
+        /// <param name="parameters">A list of parameters for the method</param>
+        /// <returns>Returns an object if the method has a return value, otherwise null</returns>
         [PublicAPI]
         public object Invoke(params object[] parameters)
         {
