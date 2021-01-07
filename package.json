@@ -3,9 +3,6 @@
   "displayName": "Reflectives",
   "version": "1.0.0",
   "unity": "2019.1",
-  "dependencies": {
-    "net.tnrd.safeevent": "1.2.1"
-  },
   "keywords": [
     "reflection",
     "helper"

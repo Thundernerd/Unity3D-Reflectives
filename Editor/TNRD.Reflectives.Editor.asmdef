@@ -1,10 +1,11 @@
 {
     "name": "TNRD.Reflectives.Editor",
     "references": [
-        "TNRD.Reflectives",
-        "TNRD.SafeEvent"
+        "TNRD.Reflectives"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
