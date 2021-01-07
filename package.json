@@ -11,5 +11,6 @@
     "name": "TNRD",
     "email": "unity3d@tnrd.net",
     "url": "https://www.tnrd.net"
-  }
+  },
+  "description": "A set of utility classes to make it easier to access hidden functionality."
 }
