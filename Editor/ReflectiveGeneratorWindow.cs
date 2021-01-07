@@ -37,6 +37,9 @@ namespace TNRD.Reflectives
         private string @namespace;
 
         [SerializeField]
+        private bool allowPublicTypes = true;
+
+        [SerializeField]
         private bool inferTypes;
 
         [SerializeField]
@@ -72,6 +75,7 @@ namespace TNRD.Reflectives
         [DisableIf("@this.selectedTypes.Count == 0 || string.IsNullOrEmpty(this.outputDirectory) || !System.IO.Directory.Exists(this.outputDirectory)")]
         private void Export()
         {
+            Debug.Log("[Reflective Generator] Starting export");
             IEnumerable<Type> inferredTypes = GetInferredTypes();
 
             List<Type> combined = new List<Type>(selectedTypes);
@@ -85,8 +89,10 @@ namespace TNRD.Reflectives
             {
                 Exporter exporter = new Exporter(@namespace, outputDirectory);
                 exporter.Export(type);
+                Debug.Log($"[Reflective Generator] Exported: {type.AssemblyQualifiedName}");
             }
 
+            Debug.Log($"[Reflective Generator] Finished exporting {combined.Count} types");
             AssetDatabase.Refresh();
         }
 
@@ -115,9 +121,9 @@ namespace TNRD.Reflectives
             return type.IsPublic && genericArguments.All(IsPublic);
         }
 
-        private static bool IsPrivate(Type type)
+        private bool IsPrivate(Type type)
         {
-            return !IsPublic(type);
+            return !IsPublic(type) || allowPublicTypes;
         }
     }
 }
