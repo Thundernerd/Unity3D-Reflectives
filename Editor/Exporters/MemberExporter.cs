@@ -8,7 +8,7 @@ using Sirenix.Utilities;
 
 namespace TNRD.Reflectives.Exporters
 {
-    public abstract class MemberExporter
+    internal abstract class MemberExporter
     {
         public abstract void Export(Type type, IndentedTextWriter definitionWriter, IndentedTextWriter constructionWriter, IndentedTextWriter bodyWriter);
 

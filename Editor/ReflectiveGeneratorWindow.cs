@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace TNRD.Reflectives
 {
-    public class ReflectiveGeneratorWindow : OdinEditorWindow
+    internal class ReflectiveGeneratorWindow : OdinEditorWindow
     {
         public const BindingFlags FLAGS = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
 

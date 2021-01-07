@@ -8,7 +8,7 @@ using Sirenix.Utilities;
 
 namespace TNRD.Reflectives.Exporters
 {
-    public class MethodExporter : MemberExporter
+    internal class MethodExporter : MemberExporter
     {
         public override void Export(Type type, IndentedTextWriter definitionWriter, IndentedTextWriter constructionWriter, IndentedTextWriter bodyWriter)
         {
@@ -34,18 +34,12 @@ namespace TNRD.Reflectives.Exporters
             }
         }
 
-        private void ExportMethod(
-            MethodInfo method,
-            int index,
-            IndentedTextWriter definitionWriter,
-            IndentedTextWriter constructionWriter,
-            IndentedTextWriter bodyWriter
-        )
+        private void ExportMethod(MethodInfo method, int index, IndentedTextWriter definitionWriter, IndentedTextWriter constructionWriter, IndentedTextWriter bodyWriter)
         {
             string memberName = method.Name;
             string returnTypeName = method.ReturnType.GetNiceName().Replace(".", "_");
-            string paramsNamesWithType = GetMethodParametersWithType(method);
-            string paramsNamesWithoutType = GetMethodParametersWithoutType(method);
+            string paramsNamesWithType = GetMethodParametersWithType(method).Replace(".", "_");
+            string paramsNamesWithoutType = GetMethodParametersWithoutType(method).Replace(".", "_");
 
             bool hasReturnType = method.ReturnType != typeof(void);
             bool isReturnTypePublic = hasReturnType && IsPublic(method.ReturnType);

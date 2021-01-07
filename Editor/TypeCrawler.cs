@@ -5,33 +5,8 @@ using System.Reflection;
 
 namespace TNRD.Reflectives
 {
-    public class TypeCrawler
+    internal class TypeCrawler
     {
-        public static List<Type> GetInferredTypes(Type type)
-        {
-            TypeCrawler typeCrawler = new TypeCrawler(type);
-            typeCrawler.Crawl();
-            return typeCrawler.inferredTypes
-                .Where(IsValid)
-                .ToList();
-        }
-
-        private static bool IsValid(Type type)
-        {
-            if (type == null)
-                return false;
-
-            if (string.IsNullOrEmpty(type.Namespace))
-                return true;
-
-            if (type.Namespace.StartsWith("System"))
-                return false;
-            if (type.Namespace.StartsWith("Mono"))
-                return false;
-
-            return true;
-        }
-
         private const BindingFlags FLAGS = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
 
         private readonly Type rootType;
@@ -124,14 +99,36 @@ namespace TNRD.Reflectives
                 return;
             }
 
-            // Type genericTypeDefinition = memberType.GetGenericTypeDefinition();
-            // types.Add(genericTypeDefinition);
-
             foreach (Type genericArgument in genericArguments)
             {
                 if (!alreadyChecked.Contains(genericArgument))
                     typesToCrawl.Add(genericArgument);
             }
+        }
+
+        public static List<Type> GetInferredTypes(Type type)
+        {
+            TypeCrawler typeCrawler = new TypeCrawler(type);
+            typeCrawler.Crawl();
+            return typeCrawler.inferredTypes
+                .Where(IsValid)
+                .ToList();
+        }
+
+        private static bool IsValid(Type type)
+        {
+            if (type == null)
+                return false;
+
+            if (string.IsNullOrEmpty(type.Namespace))
+                return true;
+
+            if (type.Namespace.StartsWith("System"))
+                return false;
+            if (type.Namespace.StartsWith("Mono"))
+                return false;
+
+            return true;
         }
     }
 }

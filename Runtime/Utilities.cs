@@ -1,11 +1,23 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using JetBrains.Annotations;
 
 namespace TNRD.Reflectives
 {
+    /// <summary>
+    /// 
+    /// </summary>
+    [PublicAPI]
     public static class Utilities
     {
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="value"></param>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        [PublicAPI]
         public static IEnumerable<T> GenerateEnumerable<T>(object value)
         {
             List<T> items = new List<T>();
@@ -32,6 +44,14 @@ namespace TNRD.Reflectives
             return items;
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="data"></param>
+        /// <typeparam name="TKey"></typeparam>
+        /// <typeparam name="TValue"></typeparam>
+        /// <returns></returns>
+        [PublicAPI]
         public static Dictionary<TKey, TValue> GenerateDictionary<TKey, TValue>(object data)
         {
             IDictionary dict = (IDictionary) data;
@@ -76,7 +96,14 @@ namespace TNRD.Reflectives
             return result;
         }
 
-        private static bool ImplementsOrInherits(Type type, Type implementsOrInherits)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="implementsOrInherits"></param>
+        /// <returns></returns>
+        [PublicAPI]
+        public static bool ImplementsOrInherits(Type type, Type implementsOrInherits)
         {
             if (implementsOrInherits.IsAssignableFrom(type))
                 return true;

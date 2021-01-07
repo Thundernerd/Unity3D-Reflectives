@@ -6,7 +6,7 @@ using Sirenix.Utilities;
 
 namespace TNRD.Reflectives.Exporters
 {
-    public class EventExporter : MemberExporter
+    internal class EventExporter : MemberExporter
     {
         public override void Export(Type type, IndentedTextWriter definitionWriter, IndentedTextWriter constructionWriter, IndentedTextWriter bodyWriter)
         {

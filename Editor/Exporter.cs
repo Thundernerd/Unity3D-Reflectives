@@ -10,7 +10,7 @@ using TNRD.Reflectives.Exporters;
 
 namespace TNRD.Reflectives
 {
-    public class Exporter
+    internal class Exporter
     {
         public const BindingFlags FLAGS = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
 
@@ -155,8 +155,10 @@ namespace TNRD.Reflectives
         private void WriteNamespaces(StringBuilder builder, Type type)
         {
             List<string> namespaces = GetNamespaces(type);
-            namespaces.Add("TNRD.Reflectives");
+            namespaces.Add("System");
             namespaces.Add("System.Reflection");
+            namespaces.Add("TNRD.Reflectives");
+            namespaces.Add("UnityEditor.PackageManager");
             namespaces = namespaces.OrderBy(x => x)
                 .Distinct()
                 .ToList();

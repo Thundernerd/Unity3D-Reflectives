@@ -6,7 +6,7 @@ using Sirenix.Utilities;
 
 namespace TNRD.Reflectives.Exporters
 {
-    public class FieldExporter : MemberExporter
+    internal class FieldExporter : MemberExporter
     {
         public override void Export(Type type, IndentedTextWriter definitionWriter, IndentedTextWriter constructionWriter, IndentedTextWriter bodyWriter)
         {
@@ -41,14 +41,7 @@ namespace TNRD.Reflectives.Exporters
             }
         }
 
-        private void ExportPublicField(
-            FieldInfo field,
-            IndentedTextWriter definitionWriter,
-            IndentedTextWriter constructionWriter,
-            IndentedTextWriter bodyWriter,
-            string typeName,
-            string memberName
-        )
+        private void ExportPublicField(FieldInfo field, IndentedTextWriter definitionWriter, IndentedTextWriter constructionWriter, IndentedTextWriter bodyWriter, string typeName, string memberName)
         {
             definitionWriter.WriteLine($"private ReflectiveField<{typeName}> field_{memberName};");
             constructionWriter.WriteLine($"field_{memberName} = CreateField<{typeName}>(\"{memberName}\", {GetBindingFlags(field)});");

@@ -7,7 +7,7 @@ using Sirenix.Utilities;
 
 namespace TNRD.Reflectives.Exporters
 {
-    public class PropertyExporter : MemberExporter
+    internal class PropertyExporter : MemberExporter
     {
         public override void Export(Type type, IndentedTextWriter definitionWriter, IndentedTextWriter constructionWriter, IndentedTextWriter bodyWriter)
         {
@@ -72,14 +72,7 @@ namespace TNRD.Reflectives.Exporters
             bodyWriter.WriteLine("}");
         }
 
-        private void ExportNonPublicProperty(
-            PropertyInfo property,
-            IndentedTextWriter definitionWriter,
-            IndentedTextWriter constructionWriter,
-            IndentedTextWriter bodyWriter,
-            string memberName,
-            string typeName
-        )
+        private void ExportNonPublicProperty(PropertyInfo property, IndentedTextWriter definitionWriter, IndentedTextWriter constructionWriter, IndentedTextWriter bodyWriter, string memberName, string typeName)
         {
             definitionWriter.WriteLine($"private ReflectiveProperty property_{memberName};");
             constructionWriter.WriteLine($"property_{memberName} = CreateProperty(\"{memberName}\", {GetBindingFlags(property)});");
