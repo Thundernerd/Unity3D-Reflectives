@@ -19,7 +19,7 @@ A set of utility classes to make it easier to access hidden functionality.
 ## Installation
 1. The package is available on the [openupm registry](https://openupm.com). You can install it via [openupm-cli](https://github.com/openupm/openupm-cli).
 ```
-openupm add net.tnrd.enumasindex
+openupm add net.tnrd.reflectives
 ```
 2. Installing through a [Unity Package](http://package-installer.glitch.me/v1/installer/package.openupm.com/net.tnrd.reflectives?registry=https://package.openupm.com) created by the [Package Installer Creator](https://package-installer.glitch.me) from [Needle](https://needle.tools)
 
