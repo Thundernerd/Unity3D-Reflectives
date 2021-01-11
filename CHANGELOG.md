@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.1.0] - 2021-01-11
+### Changed
+- Infer Types is now actually useful
+
 ## [1.0.2] - 2021-01-11
 ### Fixed
 - Using `Initialize()` method instead of `[OnInspectorInit]` attribute
