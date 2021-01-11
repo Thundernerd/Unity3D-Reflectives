@@ -7,128 +7,110 @@ namespace TNRD.Reflectives
 {
     internal class TypeCrawler
     {
+        public static List<Type> GetInferredTypes(Type type)
+        {
+            return new TypeCrawler(type)
+                .Crawl();
+        }
+
         private const BindingFlags FLAGS = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
 
         private readonly Type rootType;
 
-        private readonly HashSet<Type> inferredTypes = new HashSet<Type>();
-        private readonly HashSet<Type> alreadyChecked = new HashSet<Type>();
+        private readonly HashSet<Type> typesChecked = new HashSet<Type>();
 
-        private List<Type> typesToCrawl = new List<Type>();
-
-        private TypeCrawler(Type rootType)
+        private TypeCrawler(Type type)
         {
-            this.rootType = rootType;
+            rootType = type;
         }
 
-        private void Crawl()
+        private List<Type> Crawl()
         {
-            typesToCrawl.Add(rootType);
-
-            while (typesToCrawl.Count > 0)
-            {
-                Type type = typesToCrawl[0];
-                typesToCrawl.RemoveAt(0);
-                Crawl(type);
-            }
+            Crawl(rootType);
+            return typesChecked.ToList();
         }
 
         private void Crawl(Type type)
         {
-            if (alreadyChecked.Contains(type))
+            if (type.Namespace?.StartsWith("System") ?? false)
+                return;
+            if (type.Namespace?.StartsWith("Mono") ?? false)
+                return;
+            if (type.IsPublic)
                 return;
 
-            alreadyChecked.Add(type);
-            inferredTypes.Add(type);
+            typesChecked.Add(type);
 
-            CrawFields(type);
+            CrawlFields(type);
             CrawlProperties(type);
             CrawlMethods(type);
         }
 
-        private void CrawFields(Type type)
+        private void CrawlFields(Type type)
         {
             FieldInfo[] fields = type.GetFields(FLAGS);
-
             foreach (FieldInfo field in fields)
             {
-                CrawlMemberType(field.FieldType);
+                if (field.DeclaringType != type)
+                    continue;
+
+                Type memberType = field.FieldType;
+                CheckType(memberType);
             }
         }
 
         private void CrawlProperties(Type type)
         {
             PropertyInfo[] properties = type.GetProperties(FLAGS);
-
             foreach (PropertyInfo property in properties)
             {
-                CrawlMemberType(property.PropertyType);
+                if (property.DeclaringType != type)
+                    continue;
+
+                Type memberType = property.PropertyType;
+                CheckType(memberType);
             }
         }
 
         private void CrawlMethods(Type type)
         {
             MethodInfo[] methods = type.GetMethods(FLAGS);
-
             foreach (MethodInfo method in methods)
             {
+                if (method.DeclaringType != type)
+                    continue;
+
                 Type returnType = method.ReturnType;
                 if (returnType != typeof(void))
                 {
-                    CrawlMemberType(returnType);
+                    CheckType(type);
                 }
 
                 ParameterInfo[] parameters = method.GetParameters();
-
                 foreach (ParameterInfo parameter in parameters)
                 {
-                    CrawlMemberType(parameter.ParameterType);
+                    CheckType(parameter.ParameterType);
                 }
             }
         }
 
-        private void CrawlMemberType(Type memberType)
+        private void CheckType(Type type)
         {
-            if (alreadyChecked.Contains(memberType))
+            if (typesChecked.Contains(type))
                 return;
 
-            Type[] genericArguments = memberType.GetGenericArguments();
-            if (genericArguments.Length == 0)
-            {
-                typesToCrawl.Add(memberType);
+            Crawl(type);
+
+            if (type.GenericTypeArguments.Length == 0)
                 return;
-            }
 
-            foreach (Type genericArgument in genericArguments)
+            foreach (Type genericType in type.GenericTypeArguments)
             {
-                if (!alreadyChecked.Contains(genericArgument))
-                    typesToCrawl.Add(genericArgument);
+                if (typesChecked.Contains(genericType))
+                    continue;
+
+                Crawl(genericType);
             }
-        }
-
-        public static List<Type> GetInferredTypes(Type type)
-        {
-            TypeCrawler typeCrawler = new TypeCrawler(type);
-            typeCrawler.Crawl();
-            return typeCrawler.inferredTypes
-                .Where(IsValid)
-                .ToList();
-        }
-
-        private static bool IsValid(Type type)
-        {
-            if (type == null)
-                return false;
-
-            if (string.IsNullOrEmpty(type.Namespace))
-                return true;
-
-            if (type.Namespace.StartsWith("System"))
-                return false;
-            if (type.Namespace.StartsWith("Mono"))
-                return false;
-
-            return true;
         }
     }
 }

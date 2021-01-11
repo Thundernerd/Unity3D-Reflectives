@@ -86,14 +86,14 @@ namespace TNRD.Reflectives.Exporters
             else if (isEnumerable && !isDictionary)
             {
                 bodyWriter.WriteLine($"object _temp = field_{memberName}.GetValue();");
-                bodyWriter.WriteLine($"return _temp == null ? null : Utilities.GenerateEnumerable<{field.FieldType.GetGenericArguments()[0].GetNiceName()}>(_temp);");
+                bodyWriter.WriteLine($"return ({typeName}) (_temp == null ? null : Utilities.GenerateEnumerable<{field.FieldType.GetGenericArguments()[0].GetNiceName()}>(_temp));");
             }
             else if (isDictionary)
             {
                 string genericKeyName = field.FieldType.GetGenericArguments()[0].GetNiceName();
                 string genericValueName = field.FieldType.GetGenericArguments()[1].GetNiceName();
                 bodyWriter.WriteLine($"object _temp = field_{memberName}.GetValue();");
-                bodyWriter.WriteLine($"return _temp == null ? null : Utilities.GenerateDictionary<{genericKeyName},{genericValueName}>(_temp);");
+                bodyWriter.WriteLine($"return ({typeName}) (_temp == null ? null : Utilities.GenerateDictionary<{genericKeyName},{genericValueName}>(_temp));");
             }
             else
             {
