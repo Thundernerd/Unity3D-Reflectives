@@ -100,14 +100,14 @@ namespace TNRD.Reflectives.Exporters
                 {
                     string genericArgumentName = property.PropertyType.GetGenericArguments()[0].GetNiceName();
                     bodyWriter.WriteLine($"object _temp = property_{memberName}.GetValue();");
-                    bodyWriter.WriteLine($"return _temp == null ? null : Utilities.GenerateEnumerable<{genericArgumentName}>(_temp);");
+                    bodyWriter.WriteLine($"return ({typeName}) (_temp == null ? null : Utilities.GenerateEnumerable<{genericArgumentName}>(_temp));");
                 }
                 else if (isDictionary)
                 {
                     string genericKeyName = property.PropertyType.GetGenericArguments()[0].GetNiceName();
                     string genericValueName = property.PropertyType.GetGenericArguments()[1].GetNiceName();
                     bodyWriter.WriteLine($"object _temp = property_{memberName}.GetValue();");
-                    bodyWriter.WriteLine($"return _temp == null ? null : Utilities.GenerateDictionary<{genericKeyName},{genericValueName}>(_temp);");
+                    bodyWriter.WriteLine($"return ({typeName}) (_temp == null ? null : Utilities.GenerateDictionary<{genericKeyName},{genericValueName}>(_temp));");
                 }
                 else
                 {

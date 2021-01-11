@@ -105,7 +105,7 @@ namespace TNRD.Reflectives.Exporters
 
             foreach (ParameterInfo parameter in parameters)
             {
-                builder.Append($"typeof({parameter.ParameterType.GetNiceName()}),");
+                builder.Append($"typeof({parameter.ParameterType.GetNiceName().Replace(".", "_")}),");
             }
 
             if (parameters.Length == 0)
