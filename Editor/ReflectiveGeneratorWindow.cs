@@ -47,8 +47,7 @@ namespace TNRD.Reflectives
         [ValueDropdown(nameof(GetTypes), IsUniqueList = true)]
         private List<Type> selectedTypes = new List<Type>();
 
-        [OnInspectorInit]
-        private void OnInspectorInit()
+        protected override void Initialize()
         {
             types = AppDomain.CurrentDomain.GetAssemblies()
                 .Where(x => x.GetTypes().Any())
