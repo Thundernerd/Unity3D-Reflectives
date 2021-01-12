@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.1.1] - 2021-01-12
+### Fixed
+- Sanitizing filename when exporting
+
 ## [1.1.0] - 2021-01-11
 ### Changed
 - Infer Types is now actually useful
