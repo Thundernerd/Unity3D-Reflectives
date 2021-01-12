@@ -36,7 +36,19 @@ namespace TNRD.Reflectives
                 output = ExportClass(type);
             }
 
-            File.WriteAllText(Path.Combine(outputDirectory, $"{type.GetNiceName().Replace(".", "_")}.Generated.cs"), output);
+            string sanitizedFilename = $"{type.GetNiceName().Replace(".", "_")}.Generated.cs";
+            char[] invalidFileNameChars = Path.GetInvalidFileNameChars();
+            foreach (char invalidFileNameChar in invalidFileNameChars)
+            {
+                while (sanitizedFilename.Contains(invalidFileNameChar))
+                {
+                    sanitizedFilename = sanitizedFilename.Replace(invalidFileNameChar.ToString(), string.Empty);
+                }
+            }
+
+            string outputPath = Path.Combine(outputDirectory, sanitizedFilename);
+            
+            File.WriteAllText(outputPath, output);
         }
 
         private string ExportEnum(Type type)
