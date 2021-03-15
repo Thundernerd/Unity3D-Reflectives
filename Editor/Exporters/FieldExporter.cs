@@ -1,124 +1,328 @@
 using System;
-using System.CodeDom.Compiler;
+using System.CodeDom;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Sirenix.Utilities;
 
 namespace TNRD.Reflectives.Exporters
 {
-    internal class FieldExporter : MemberExporter
+    public class FieldExporter
     {
-        public override void Export(Type type, IndentedTextWriter definitionWriter, IndentedTextWriter constructionWriter, IndentedTextWriter bodyWriter)
+        public static CodeTypeMemberCollection Generate(Type type)
         {
-            ExportFields(type, definitionWriter, constructionWriter, bodyWriter);
+            FieldExporter fieldExporter = new FieldExporter(type);
+            fieldExporter.Generate();
+            return fieldExporter.members;
         }
 
-        private void ExportFields(Type type, IndentedTextWriter definitionWriter, IndentedTextWriter constructionWriter, IndentedTextWriter bodyWriter)
+        private readonly CodeTypeMemberCollection members = new CodeTypeMemberCollection();
+        private readonly Type type;
+
+        private FieldExporter(Type type)
         {
-            FieldInfo[] fields = type.GetFields(Exporter.FLAGS)
+            this.type = type;
+        }
+
+        private void Generate()
+        {
+            FieldInfo[] fieldInfos = type.GetFields(Exporter.FLAGS)
                 .Where(x => x.DeclaringType == type)
                 .Where(x => !x.Name.Contains("<"))
                 .ToArray();
 
-            foreach (FieldInfo field in fields)
+            foreach (FieldInfo fieldInfo in fieldInfos)
             {
-                ExportField(field, definitionWriter, constructionWriter, bodyWriter);
+                GenerateField(fieldInfo);
+                GenerateProperty(fieldInfo);
             }
         }
 
-        private void ExportField(FieldInfo field, IndentedTextWriter definitionWriter, IndentedTextWriter constructionWriter, IndentedTextWriter bodyWriter)
+        private void GenerateField(FieldInfo fieldInfo)
         {
-            string typeName = field.FieldType.GetNiceName().Replace(".", "_");
-            string memberName = field.GetNiceName();
-
-            if (IsPublic(field.FieldType))
+            CodeMemberField field = new CodeMemberField(typeof(ReflectiveField), $"field_{fieldInfo.Name}")
             {
-                ExportPublicField(field, definitionWriter, constructionWriter, bodyWriter, typeName, memberName);
+                Attributes = MemberAttributes.Private | MemberAttributes.Final
+            };
+
+            members.Add(field);
+        }
+
+        private void GenerateProperty(FieldInfo fieldInfo)
+        {
+            CodeMemberProperty property = new CodeMemberProperty
+            {
+                Attributes = MemberAttributes.Public | MemberAttributes.Final,
+                HasGet = true,
+                HasSet = !fieldInfo.IsInitOnly,
+                Name = fieldInfo.Name,
+                Type = GetCodeTypeReference(fieldInfo.FieldType)
+            };
+
+            AddPropertyGetter(property, fieldInfo);
+            AddPropertySetter(property, fieldInfo);
+
+            members.Add(property);
+        }
+
+        private static CodeTypeReference GetCodeTypeReference(Type fieldType)
+        {
+            if (MemberExporter.IsPublic(fieldType))
+            {
+                return new CodeTypeReference(fieldType);
+            }
+
+            if (MemberExporter.IsDictionary(fieldType))
+            {
+                Type[] genericArguments = fieldType.GetGenericArguments();
+                Type first = genericArguments[0];
+                Type second = genericArguments[1];
+
+                CodeTypeReference codeTypeReference = new CodeTypeReference(typeof(Dictionary<,>));
+                codeTypeReference.TypeArguments.Add(GetCodeTypeReference(first));
+                codeTypeReference.TypeArguments.Add(GetCodeTypeReference(second));
+
+                return codeTypeReference;
+            }
+
+            if (MemberExporter.IsEnumerable(fieldType))
+            {
+                Type[] genericArguments = fieldType.GetGenericArguments();
+                Type first = genericArguments[0];
+
+                CodeTypeReference codeTypeReference = new CodeTypeReference(typeof(IEnumerable<>));
+                codeTypeReference.TypeArguments.Add(GetCodeTypeReference(first));
+
+                return codeTypeReference;
+            }
+
+            return new CodeTypeReference(fieldType.Name);
+        }
+
+        private void AddPropertyGetter(CodeMemberProperty property, FieldInfo fieldInfo)
+        {
+            if (MemberExporter.IsPublic(fieldInfo.FieldType))
+            {
+                AddPublicGetter(property, fieldInfo);
+            }
+            else if (fieldInfo.FieldType.IsEnum)
+            {
+                AddEnumGetter(property, fieldInfo);
+            }
+            else if (MemberExporter.IsDictionary(fieldInfo.FieldType))
+            {
+                AddDictionaryGetter(property, fieldInfo);
+            }
+            else if (MemberExporter.IsEnumerable(fieldInfo.FieldType))
+            {
+                AddEnumerableGetter(property, fieldInfo);
             }
             else
             {
-                ExportNonPublicField(field, definitionWriter, constructionWriter, bodyWriter, memberName, typeName);
+                AddDefaultGetter(property, fieldInfo);
             }
         }
 
-        private void ExportPublicField(FieldInfo field, IndentedTextWriter definitionWriter, IndentedTextWriter constructionWriter, IndentedTextWriter bodyWriter, string typeName, string memberName)
+        private static void AddPublicGetter(CodeMemberProperty property, FieldInfo fieldInfo)
         {
-            definitionWriter.WriteLine($"private ReflectiveField<{typeName}> field_{memberName};");
-            constructionWriter.WriteLine($"field_{memberName} = CreateField<{typeName}>(\"{memberName}\", {GetBindingFlags(field)});");
+            CodeMethodReturnStatement expression = new CodeMethodReturnStatement(
+                new CodeCastExpression(
+                    fieldInfo.FieldType,
+                    new CodeMethodInvokeExpression(
+                        new CodeFieldReferenceExpression(
+                            new CodeThisReferenceExpression(), $"field_{fieldInfo.Name}"),
+                        "GetValue")));
 
-            bodyWriter.WriteLine($"public {typeName} {memberName}");
-            bodyWriter.WriteLine("{");
-            bodyWriter.Indent++;
-            bodyWriter.WriteLine($"get => field_{memberName}.GetValue();");
-            bodyWriter.WriteLine($"set => field_{memberName}.SetValue(value);");
-            bodyWriter.Indent--;
-            bodyWriter.WriteLine("}");
+            property.GetStatements.Add(expression);
         }
 
-        private void ExportNonPublicField(
-            FieldInfo field,
-            IndentedTextWriter definitionWriter,
-            IndentedTextWriter constructionWriter,
-            IndentedTextWriter bodyWriter,
-            string memberName,
-            string typeName
-        )
+        private static void AddEnumGetter(CodeMemberProperty property, FieldInfo fieldInfo)
         {
-            definitionWriter.WriteLine($"private ReflectiveField field_{memberName};");
-            constructionWriter.WriteLine($"field_{memberName} = CreateField(\"{memberName}\", {GetBindingFlags(field)});");
+            Type underlyingType = fieldInfo.FieldType.GetEnumUnderlyingType();
+            CodeVariableDeclarationStatement variableDeclaration = new CodeVariableDeclarationStatement(
+                underlyingType,
+                "_temp",
+                new CodeCastExpression(
+                    underlyingType,
+                    new CodeMethodInvokeExpression(
+                        new CodeFieldReferenceExpression(
+                            new CodeThisReferenceExpression(),
+                            $"field_{fieldInfo.Name}"),
+                        "GetValue")));
 
-            bodyWriter.WriteLine($"public {typeName} {memberName}");
-            bodyWriter.WriteLine("{");
-            bodyWriter.Indent++;
-            bodyWriter.WriteLine("get");
-            bodyWriter.WriteLine("{");
-            bodyWriter.Indent++;
+            CodeMethodReturnStatement returnStatement = new CodeMethodReturnStatement(
+                new CodeCastExpression(
+                    fieldInfo.FieldType.Name,
+                    new CodeVariableReferenceExpression("_temp")));
 
-            bool isEnumerable = IsEnumerable(field.FieldType);
-            bool isDictionary = IsDictionary(field.FieldType);
+            property.GetStatements.Add(variableDeclaration);
+            property.GetStatements.Add(returnStatement);
+        }
 
-            if (field.FieldType.IsEnum)
+        private void AddDictionaryGetter(CodeMemberProperty property, FieldInfo fieldInfo)
+        {
+            CodeVariableDeclarationStatement variableDeclaration = new CodeVariableDeclarationStatement(
+                typeof(object),
+                "_temp",
+                new CodeMethodInvokeExpression(
+                    new CodeFieldReferenceExpression(
+                        new CodeThisReferenceExpression(),
+                        $"field_{fieldInfo.Name}"),
+                    "GetValue"));
+
+            CodeConditionStatement conditionStatement = new CodeConditionStatement(
+                new CodeBinaryOperatorExpression(
+                    new CodeVariableReferenceExpression("_temp"),
+                    CodeBinaryOperatorType.ValueEquality,
+                    new CodePrimitiveExpression(null)),
+                new CodeStatement[]
+                {
+                    new CodeMethodReturnStatement(
+                        new CodePrimitiveExpression(null))
+                },
+                new CodeStatement[]
+                {
+                    new CodeMethodReturnStatement(
+                        new CodeMethodInvokeExpression(
+                            new CodeMethodReferenceExpression(
+                                new CodeTypeReferenceExpression(typeof(Utilities)),
+                                "GenerateDictionary",
+                                GetCodeTypeReference(fieldInfo.FieldType.GetGenericArguments()[0]),
+                                GetCodeTypeReference(fieldInfo.FieldType.GetGenericArguments()[1])),
+                            new CodeVariableReferenceExpression("_temp")))
+                });
+
+            property.GetStatements.Add(variableDeclaration);
+            property.GetStatements.Add(conditionStatement);
+        }
+
+        private void AddEnumerableGetter(CodeMemberProperty property, FieldInfo fieldInfo)
+        {
+            CodeVariableDeclarationStatement variableDeclaration = new CodeVariableDeclarationStatement(
+                typeof(object),
+                "_temp",
+                new CodeMethodInvokeExpression(
+                    new CodeFieldReferenceExpression(
+                        new CodeThisReferenceExpression(),
+                        $"field_{fieldInfo.Name}"),
+                    "GetValue"));
+
+            CodeConditionStatement conditionStatement = new CodeConditionStatement(
+                new CodeBinaryOperatorExpression(
+                    new CodeVariableReferenceExpression("_temp"),
+                    CodeBinaryOperatorType.ValueEquality,
+                    new CodePrimitiveExpression(null)),
+                new CodeStatement[]
+                {
+                    new CodeMethodReturnStatement(
+                        new CodePrimitiveExpression(null))
+                },
+                new CodeStatement[]
+                {
+                    new CodeMethodReturnStatement(
+                        new CodeMethodInvokeExpression(
+                            new CodeMethodReferenceExpression(
+                                new CodeTypeReferenceExpression(typeof(Utilities)),
+                                "GenerateEnumerable",
+                                GetCodeTypeReference(fieldInfo.FieldType.GetGenericArguments()[0])),
+                            new CodeVariableReferenceExpression("_temp")))
+                });
+
+            property.GetStatements.Add(variableDeclaration);
+            property.GetStatements.Add(conditionStatement);
+        }
+
+        private static void AddDefaultGetter(CodeMemberProperty property, FieldInfo fieldInfo)
+        {
+            CodeVariableDeclarationStatement variableDeclaration = new CodeVariableDeclarationStatement(
+                typeof(object),
+                "_temp",
+                new CodeMethodInvokeExpression(
+                    new CodeFieldReferenceExpression(
+                        new CodeThisReferenceExpression(),
+                        $"field_{fieldInfo.Name}"),
+                    "GetValue"));
+
+            CodeConditionStatement conditionStatement = new CodeConditionStatement(
+                new CodeBinaryOperatorExpression(
+                    new CodeVariableReferenceExpression("_temp"),
+                    CodeBinaryOperatorType.ValueEquality,
+                    new CodePrimitiveExpression(null))
+                ,
+                new CodeStatement[]
+                {
+                    new CodeMethodReturnStatement(new CodePrimitiveExpression(null))
+                },
+                new CodeStatement[]
+                {
+                    new CodeMethodReturnStatement(
+                        new CodeObjectCreateExpression(
+                            fieldInfo.FieldType.Name,
+                            new CodeVariableReferenceExpression("_temp")))
+                });
+
+            property.GetStatements.Add(variableDeclaration);
+            property.GetStatements.Add(conditionStatement);
+        }
+
+        private void AddPropertySetter(CodeMemberProperty property, FieldInfo fieldInfo)
+        {
+            if (!property.HasSet)
+                return;
+
+            if (MemberExporter.IsPublic(fieldInfo.FieldType))
             {
-                Type underlyingType = field.FieldType.GetEnumUnderlyingType();
-                bodyWriter.WriteLine($"object _temp = ({underlyingType.GetNiceName().Replace(".", "_")})field_{memberName}.GetValue();");
-                bodyWriter.WriteLine($"return ({typeName})_temp;");
+                CodeMethodInvokeExpression expression = new CodeMethodInvokeExpression(
+                    new CodeFieldReferenceExpression(
+                        new CodeThisReferenceExpression(),
+                        $"field_{fieldInfo.Name}"),
+                    "SetValue",
+                    new CodePropertySetValueReferenceExpression());
+
+                property.SetStatements.Add(expression);
             }
-            else if (isEnumerable && !isDictionary)
+            else if (fieldInfo.FieldType.IsEnum)
             {
-                bodyWriter.WriteLine($"object _temp = field_{memberName}.GetValue();");
-                bodyWriter.WriteLine($"return ({typeName}) (_temp == null ? null : Utilities.GenerateEnumerable<{field.FieldType.GetGenericArguments()[0].GetNiceName()}>(_temp));");
+                Type underlyingType = fieldInfo.FieldType.GetEnumUnderlyingType();
+                CodeVariableDeclarationStatement variableDeclaration = new CodeVariableDeclarationStatement(
+                    underlyingType,
+                    "_temp",
+                    new CodeCastExpression(
+                        underlyingType,
+                        new CodePropertySetValueReferenceExpression()));
+
+                CodeMethodInvokeExpression invokeExpression = new CodeMethodInvokeExpression(
+                    new CodeFieldReferenceExpression(
+                        new CodeThisReferenceExpression(),
+                        $"field_{fieldInfo.Name}"),
+                    "SetValue",
+                    new CodeVariableReferenceExpression("_temp"));
+
+                property.SetStatements.Add(variableDeclaration);
+                property.SetStatements.Add(invokeExpression);
             }
-            else if (isDictionary)
+            else if (MemberExporter.IsDictionary(fieldInfo.FieldType))
             {
-                string genericKeyName = field.FieldType.GetGenericArguments()[0].GetNiceName();
-                string genericValueName = field.FieldType.GetGenericArguments()[1].GetNiceName();
-                bodyWriter.WriteLine($"object _temp = field_{memberName}.GetValue();");
-                bodyWriter.WriteLine($"return ({typeName}) (_temp == null ? null : Utilities.GenerateDictionary<{genericKeyName},{genericValueName}>(_temp));");
+                property.SetStatements.Add(
+                    new CodeCommentStatement("Not supported"));
+            }
+            else if (MemberExporter.IsEnumerable(fieldInfo.FieldType))
+            {
+                property.SetStatements.Add(
+                    new CodeCommentStatement("Not supported"));
             }
             else
             {
-                bodyWriter.WriteLine($"object _temp = field_{memberName}.GetValue();");
-                bodyWriter.WriteLine($"return _temp == null ? null : new {typeName}(_temp);");
-            }
+                CodeMethodInvokeExpression invokeExpression = new CodeMethodInvokeExpression(
+                    new CodeFieldReferenceExpression(
+                        new CodeThisReferenceExpression(),
+                        $"field_{fieldInfo.Name}"),
+                    "SetValue",
+                    new CodeFieldReferenceExpression(
+                        new CodePropertySetValueReferenceExpression(),
+                        "Instance"));
 
-            bodyWriter.Indent--;
-            bodyWriter.WriteLine("}");
-            if (field.FieldType.IsEnum)
-            {
-                Type underlyingType = field.FieldType.GetEnumUnderlyingType();
-                bodyWriter.WriteLine($"set => field_{memberName}.SetValue(({underlyingType.GetNiceName().Replace(".", "_")})value);");
+                property.SetStatements.Add(invokeExpression);
             }
-            else if (isEnumerable || isDictionary)
-            {
-                // Not supported
-            }
-            else
-            {
-                bodyWriter.WriteLine($"set => field_{memberName}.SetValue(value.Instance);");
-            }
-
-            bodyWriter.Indent--;
-            bodyWriter.WriteLine("}");
         }
     }
 }
