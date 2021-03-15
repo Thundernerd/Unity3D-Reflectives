@@ -52,13 +52,13 @@ namespace TNRD.Reflectives
         /// <typeparam name="TValue"></typeparam>
         /// <returns></returns>
         [PublicAPI]
-        public static Dictionary<TKey, TValue> GenerateDictionary<TKey, TValue>(object data)
+        public static IDictionary<TKey, TValue> GenerateDictionary<TKey, TValue>(object data)
         {
             IDictionary dict = (IDictionary) data;
             return GenerateDictionary<TKey, TValue>(dict);
         }
 
-        private static Dictionary<TKey, TValue> GenerateDictionary<TKey, TValue>(IDictionary dictionary)
+        private static IDictionary<TKey, TValue> GenerateDictionary<TKey, TValue>(IDictionary dictionary)
         {
             Dictionary<TKey, TValue> result = new Dictionary<TKey, TValue>();
 
