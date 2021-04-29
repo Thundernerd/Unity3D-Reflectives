@@ -1,14 +1,10 @@
 using System;
-using System.CodeDom.Compiler;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using Sirenix.OdinInspector;
 using Sirenix.OdinInspector.Editor;
-using Sirenix.Utilities;
 using TNRD.Odin;
 using UnityEditor;
 using UnityEngine;
@@ -29,8 +25,7 @@ namespace TNRD.Reflectives
         private List<Type> types = new List<Type>();
         private ValueDropdownList<Type> typesList;
 
-        [SerializeField]
-        [FolderPath(AbsolutePath = true, RequireExistingPath = true)]
+        [SerializeField, FolderPath(AbsolutePath = true, RequireExistingPath = true)]
         private string outputDirectory;
 
         [SerializeField]
@@ -42,10 +37,8 @@ namespace TNRD.Reflectives
         [SerializeField]
         private bool inferTypes;
 
-        [SerializeField]
-        [ListDrawerSettings(Expanded = true, DraggableItems = false)]
-        [ValueDropdown(nameof(GetTypes), IsUniqueList = true)]
-        private List<Type> selectedTypes = new List<Type>();
+        [SerializeField, ListDrawerSettings(Expanded = true, DraggableItems = false), ValueDropdown(nameof(GetTypes), IsUniqueList = true)]
+        private readonly List<Type> selectedTypes = new List<Type>();
 
         protected override void Initialize()
         {
@@ -69,9 +62,7 @@ namespace TNRD.Reflectives
             return typesList;
         }
 
-        [FlexibleSpace]
-        [Button(ButtonSizes.Gigantic)]
-        [DisableIf("@this.selectedTypes.Count == 0 || string.IsNullOrEmpty(this.outputDirectory) || !System.IO.Directory.Exists(this.outputDirectory)")]
+        [FlexibleSpace, Button(ButtonSizes.Gigantic), DisableIf("@this.selectedTypes.Count == 0 || string.IsNullOrEmpty(this.outputDirectory) || !System.IO.Directory.Exists(this.outputDirectory)")]
         private void Export()
         {
             Debug.Log("[Reflective Generator] Starting export");
@@ -86,6 +77,7 @@ namespace TNRD.Reflectives
 
             foreach (Type type in combined)
             {
+                Debug.Log($"[Reflective Generator] Exporting: {type.AssemblyQualifiedName}");
                 Exporter exporter = new Exporter(@namespace, outputDirectory);
                 exporter.Export(type);
                 Debug.Log($"[Reflective Generator] Exported: {type.AssemblyQualifiedName}");

@@ -64,23 +64,6 @@ namespace TNRD.Reflectives.Exporters
             return false;
         }
 
-        public static bool IsPublic(Type type)
-        {
-            Type[] genericArguments = type.GetGenericArguments();
-            if (genericArguments.Length == 0)
-                return type.IsPublic;
 
-            return type.IsPublic && genericArguments.All(IsPublic);
-        }
-
-        public static bool IsEnumerable(Type type)
-        {
-            return typeof(IEnumerable).IsAssignableFrom(type);
-        }
-
-        public static bool IsDictionary(Type type)
-        {
-            return typeof(IDictionary).IsAssignableFrom(type);
-        }
     }
 }

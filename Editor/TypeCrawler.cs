@@ -27,7 +27,9 @@ namespace TNRD.Reflectives
         private List<Type> Crawl()
         {
             Crawl(rootType);
-            return typesChecked.ToList();
+            return typesChecked
+                .Where(x=>!x.IsNested)
+                .ToList();
         }
 
         private void Crawl(Type type)
@@ -97,6 +99,9 @@ namespace TNRD.Reflectives
         private void CheckType(Type type)
         {
             if (typesChecked.Contains(type))
+                return;
+
+            if (type.IsByRef)
                 return;
 
             Crawl(type);

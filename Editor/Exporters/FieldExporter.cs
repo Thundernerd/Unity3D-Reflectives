@@ -1,6 +1,5 @@
 using System;
 using System.CodeDom;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
@@ -15,26 +14,54 @@ namespace TNRD.Reflectives.Exporters
             return fieldExporter.members;
         }
 
+        public static void Iterate(Type type, Action<FieldExporter, FieldInfo> action)
+        {
+            FieldExporter exporter = new FieldExporter(type);
+            exporter.Iterate(action);
+        }
+
         private readonly CodeTypeMemberCollection members = new CodeTypeMemberCollection();
         private readonly Type type;
+
+        // For filtering out events
+        private EventInfo[] eventInfos;
 
         private FieldExporter(Type type)
         {
             this.type = type;
         }
 
-        private void Generate()
+        private bool FilterEvents(FieldInfo fieldInfo)
+        {
+            if (eventInfos == null)
+                eventInfos = EventExporter.GetEvents(type);
+
+            return eventInfos.All(x => x.Name != fieldInfo.Name);
+        }
+
+        private void Iterate(Action<FieldExporter, FieldInfo> action)
         {
             FieldInfo[] fieldInfos = type.GetFields(Exporter.FLAGS)
                 .Where(x => x.DeclaringType == type)
                 .Where(x => !x.Name.Contains("<"))
+                .Where(FilterEvents)
                 .ToArray();
 
             foreach (FieldInfo fieldInfo in fieldInfos)
             {
+                action.Invoke(this, fieldInfo);
+            }
+        }
+
+        private void Generate()
+        {
+            void Action(FieldExporter exporter, FieldInfo fieldInfo)
+            {
                 GenerateField(fieldInfo);
                 GenerateProperty(fieldInfo);
             }
+
+            Iterate(Action);
         }
 
         private void GenerateField(FieldInfo fieldInfo)
@@ -55,7 +82,7 @@ namespace TNRD.Reflectives.Exporters
                 HasGet = true,
                 HasSet = !fieldInfo.IsInitOnly,
                 Name = fieldInfo.Name,
-                Type = GetCodeTypeReference(fieldInfo.FieldType)
+                Type = ExportUtils.GetCodeTypeReference(fieldInfo.FieldType)
             };
 
             AddPropertyGetter(property, fieldInfo);
@@ -64,204 +91,32 @@ namespace TNRD.Reflectives.Exporters
             members.Add(property);
         }
 
-        private static CodeTypeReference GetCodeTypeReference(Type fieldType)
-        {
-            if (MemberExporter.IsPublic(fieldType))
-            {
-                return new CodeTypeReference(fieldType);
-            }
-
-            if (MemberExporter.IsDictionary(fieldType))
-            {
-                Type[] genericArguments = fieldType.GetGenericArguments();
-                Type first = genericArguments[0];
-                Type second = genericArguments[1];
-
-                CodeTypeReference codeTypeReference = new CodeTypeReference(typeof(Dictionary<,>));
-                codeTypeReference.TypeArguments.Add(GetCodeTypeReference(first));
-                codeTypeReference.TypeArguments.Add(GetCodeTypeReference(second));
-
-                return codeTypeReference;
-            }
-
-            if (MemberExporter.IsEnumerable(fieldType))
-            {
-                Type[] genericArguments = fieldType.GetGenericArguments();
-                Type first = genericArguments[0];
-
-                CodeTypeReference codeTypeReference = new CodeTypeReference(typeof(IEnumerable<>));
-                codeTypeReference.TypeArguments.Add(GetCodeTypeReference(first));
-
-                return codeTypeReference;
-            }
-
-            return new CodeTypeReference(fieldType.Name);
-        }
-
         private void AddPropertyGetter(CodeMemberProperty property, FieldInfo fieldInfo)
         {
-            if (MemberExporter.IsPublic(fieldInfo.FieldType))
+            if (ExportUtils.IsPublic(fieldInfo.FieldType))
             {
-                AddPublicGetter(property, fieldInfo);
+                ExportFunctions.AddPublicGetter(property, fieldInfo.FieldType, fieldInfo.Name, MemberTypes.Field);
             }
             else if (fieldInfo.FieldType.IsEnum)
             {
-                AddEnumGetter(property, fieldInfo);
+                ExportFunctions.AddEnumGetter(property, fieldInfo.FieldType, fieldInfo.Name, MemberTypes.Field);
             }
-            else if (MemberExporter.IsDictionary(fieldInfo.FieldType))
+            else if (ExportUtils.IsDictionary(fieldInfo.FieldType))
             {
-                AddDictionaryGetter(property, fieldInfo);
+                ExportFunctions.AddDictionaryGetter(property, fieldInfo.FieldType, fieldInfo.Name, MemberTypes.Field);
             }
-            else if (MemberExporter.IsEnumerable(fieldInfo.FieldType))
+            else if (ExportUtils.IsEnumerable(fieldInfo.FieldType) && !fieldInfo.FieldType.IsArray)
             {
-                AddEnumerableGetter(property, fieldInfo);
+                ExportFunctions.AddEnumerableGetter(property, fieldInfo.FieldType, fieldInfo.Name, MemberTypes.Field);
+            }
+            else if (fieldInfo.FieldType.IsArray)
+            {
+                ExportFunctions.AddArrayGetter(property, fieldInfo.FieldType, fieldInfo.Name, MemberTypes.Field);
             }
             else
             {
-                AddDefaultGetter(property, fieldInfo);
+                ExportFunctions.AddDefaultGetter(property, fieldInfo.FieldType, fieldInfo.Name, MemberTypes.Field);
             }
-        }
-
-        private static void AddPublicGetter(CodeMemberProperty property, FieldInfo fieldInfo)
-        {
-            CodeMethodReturnStatement expression = new CodeMethodReturnStatement(
-                new CodeCastExpression(
-                    fieldInfo.FieldType,
-                    new CodeMethodInvokeExpression(
-                        new CodeFieldReferenceExpression(
-                            new CodeThisReferenceExpression(), $"field_{fieldInfo.Name}"),
-                        "GetValue")));
-
-            property.GetStatements.Add(expression);
-        }
-
-        private static void AddEnumGetter(CodeMemberProperty property, FieldInfo fieldInfo)
-        {
-            Type underlyingType = fieldInfo.FieldType.GetEnumUnderlyingType();
-            CodeVariableDeclarationStatement variableDeclaration = new CodeVariableDeclarationStatement(
-                underlyingType,
-                "_temp",
-                new CodeCastExpression(
-                    underlyingType,
-                    new CodeMethodInvokeExpression(
-                        new CodeFieldReferenceExpression(
-                            new CodeThisReferenceExpression(),
-                            $"field_{fieldInfo.Name}"),
-                        "GetValue")));
-
-            CodeMethodReturnStatement returnStatement = new CodeMethodReturnStatement(
-                new CodeCastExpression(
-                    fieldInfo.FieldType.Name,
-                    new CodeVariableReferenceExpression("_temp")));
-
-            property.GetStatements.Add(variableDeclaration);
-            property.GetStatements.Add(returnStatement);
-        }
-
-        private void AddDictionaryGetter(CodeMemberProperty property, FieldInfo fieldInfo)
-        {
-            CodeVariableDeclarationStatement variableDeclaration = new CodeVariableDeclarationStatement(
-                typeof(object),
-                "_temp",
-                new CodeMethodInvokeExpression(
-                    new CodeFieldReferenceExpression(
-                        new CodeThisReferenceExpression(),
-                        $"field_{fieldInfo.Name}"),
-                    "GetValue"));
-
-            CodeConditionStatement conditionStatement = new CodeConditionStatement(
-                new CodeBinaryOperatorExpression(
-                    new CodeVariableReferenceExpression("_temp"),
-                    CodeBinaryOperatorType.ValueEquality,
-                    new CodePrimitiveExpression(null)),
-                new CodeStatement[]
-                {
-                    new CodeMethodReturnStatement(
-                        new CodePrimitiveExpression(null))
-                },
-                new CodeStatement[]
-                {
-                    new CodeMethodReturnStatement(
-                        new CodeMethodInvokeExpression(
-                            new CodeMethodReferenceExpression(
-                                new CodeTypeReferenceExpression(typeof(Utilities)),
-                                "GenerateDictionary",
-                                GetCodeTypeReference(fieldInfo.FieldType.GetGenericArguments()[0]),
-                                GetCodeTypeReference(fieldInfo.FieldType.GetGenericArguments()[1])),
-                            new CodeVariableReferenceExpression("_temp")))
-                });
-
-            property.GetStatements.Add(variableDeclaration);
-            property.GetStatements.Add(conditionStatement);
-        }
-
-        private void AddEnumerableGetter(CodeMemberProperty property, FieldInfo fieldInfo)
-        {
-            CodeVariableDeclarationStatement variableDeclaration = new CodeVariableDeclarationStatement(
-                typeof(object),
-                "_temp",
-                new CodeMethodInvokeExpression(
-                    new CodeFieldReferenceExpression(
-                        new CodeThisReferenceExpression(),
-                        $"field_{fieldInfo.Name}"),
-                    "GetValue"));
-
-            CodeConditionStatement conditionStatement = new CodeConditionStatement(
-                new CodeBinaryOperatorExpression(
-                    new CodeVariableReferenceExpression("_temp"),
-                    CodeBinaryOperatorType.ValueEquality,
-                    new CodePrimitiveExpression(null)),
-                new CodeStatement[]
-                {
-                    new CodeMethodReturnStatement(
-                        new CodePrimitiveExpression(null))
-                },
-                new CodeStatement[]
-                {
-                    new CodeMethodReturnStatement(
-                        new CodeMethodInvokeExpression(
-                            new CodeMethodReferenceExpression(
-                                new CodeTypeReferenceExpression(typeof(Utilities)),
-                                "GenerateEnumerable",
-                                GetCodeTypeReference(fieldInfo.FieldType.GetGenericArguments()[0])),
-                            new CodeVariableReferenceExpression("_temp")))
-                });
-
-            property.GetStatements.Add(variableDeclaration);
-            property.GetStatements.Add(conditionStatement);
-        }
-
-        private static void AddDefaultGetter(CodeMemberProperty property, FieldInfo fieldInfo)
-        {
-            CodeVariableDeclarationStatement variableDeclaration = new CodeVariableDeclarationStatement(
-                typeof(object),
-                "_temp",
-                new CodeMethodInvokeExpression(
-                    new CodeFieldReferenceExpression(
-                        new CodeThisReferenceExpression(),
-                        $"field_{fieldInfo.Name}"),
-                    "GetValue"));
-
-            CodeConditionStatement conditionStatement = new CodeConditionStatement(
-                new CodeBinaryOperatorExpression(
-                    new CodeVariableReferenceExpression("_temp"),
-                    CodeBinaryOperatorType.ValueEquality,
-                    new CodePrimitiveExpression(null))
-                ,
-                new CodeStatement[]
-                {
-                    new CodeMethodReturnStatement(new CodePrimitiveExpression(null))
-                },
-                new CodeStatement[]
-                {
-                    new CodeMethodReturnStatement(
-                        new CodeObjectCreateExpression(
-                            fieldInfo.FieldType.Name,
-                            new CodeVariableReferenceExpression("_temp")))
-                });
-
-            property.GetStatements.Add(variableDeclaration);
-            property.GetStatements.Add(conditionStatement);
         }
 
         private void AddPropertySetter(CodeMemberProperty property, FieldInfo fieldInfo)
@@ -269,59 +124,29 @@ namespace TNRD.Reflectives.Exporters
             if (!property.HasSet)
                 return;
 
-            if (MemberExporter.IsPublic(fieldInfo.FieldType))
+            if (ExportUtils.IsPublic(fieldInfo.FieldType))
             {
-                CodeMethodInvokeExpression expression = new CodeMethodInvokeExpression(
-                    new CodeFieldReferenceExpression(
-                        new CodeThisReferenceExpression(),
-                        $"field_{fieldInfo.Name}"),
-                    "SetValue",
-                    new CodePropertySetValueReferenceExpression());
-
-                property.SetStatements.Add(expression);
+                ExportFunctions.AddPublicSetter(property, fieldInfo.FieldType, fieldInfo.Name, MemberTypes.Field);
             }
             else if (fieldInfo.FieldType.IsEnum)
             {
-                Type underlyingType = fieldInfo.FieldType.GetEnumUnderlyingType();
-                CodeVariableDeclarationStatement variableDeclaration = new CodeVariableDeclarationStatement(
-                    underlyingType,
-                    "_temp",
-                    new CodeCastExpression(
-                        underlyingType,
-                        new CodePropertySetValueReferenceExpression()));
-
-                CodeMethodInvokeExpression invokeExpression = new CodeMethodInvokeExpression(
-                    new CodeFieldReferenceExpression(
-                        new CodeThisReferenceExpression(),
-                        $"field_{fieldInfo.Name}"),
-                    "SetValue",
-                    new CodeVariableReferenceExpression("_temp"));
-
-                property.SetStatements.Add(variableDeclaration);
-                property.SetStatements.Add(invokeExpression);
+                ExportFunctions.AddEnumSetter(property, fieldInfo.FieldType, fieldInfo.Name, MemberTypes.Field);
             }
-            else if (MemberExporter.IsDictionary(fieldInfo.FieldType))
+            else if (ExportUtils.IsDictionary(fieldInfo.FieldType))
             {
-                property.SetStatements.Add(
-                    new CodeCommentStatement("Not supported"));
+                ExportFunctions.AddDictionarySetter(property, fieldInfo.FieldType, fieldInfo.Name, MemberTypes.Field);
             }
-            else if (MemberExporter.IsEnumerable(fieldInfo.FieldType))
+            else if (ExportUtils.IsEnumerable(fieldInfo.FieldType) && !fieldInfo.FieldType.IsArray)
             {
-                property.SetStatements.Add(
-                    new CodeCommentStatement("Not supported"));
+                ExportFunctions.AddEnumerableSetter(property, fieldInfo.FieldType, fieldInfo.Name, MemberTypes.Field);
+            }
+            else if (fieldInfo.FieldType.IsArray)
+            {
+                ExportFunctions.AddArraySetter(property, fieldInfo.FieldType, fieldInfo.Name, MemberTypes.Field);
             }
             else
             {
-                CodeMethodInvokeExpression invokeExpression = new CodeMethodInvokeExpression(
-                    new CodeFieldReferenceExpression(
-                        new CodeThisReferenceExpression(),
-                        $"field_{fieldInfo.Name}"),
-                    "SetValue",
-                    new CodeFieldReferenceExpression(
-                        new CodePropertySetValueReferenceExpression(),
-                        "Instance"));
-
-                property.SetStatements.Add(invokeExpression);
+                ExportFunctions.AddDefaultSetter(property, fieldInfo.FieldType, fieldInfo.Name, MemberTypes.Field);
             }
         }
     }

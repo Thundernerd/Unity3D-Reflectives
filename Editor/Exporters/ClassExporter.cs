@@ -1,5 +1,6 @@
 using System;
 using System.CodeDom;
+using System.Collections.Generic;
 using System.Reflection;
 
 namespace TNRD.Reflectives.Exporters
@@ -33,8 +34,17 @@ namespace TNRD.Reflectives.Exporters
             AddConstructors(declaration);
             AddMethods(declaration);
 
-            CodeTypeMemberCollection codeTypeMembers = FieldExporter.Generate(type);
-            declaration.Members.AddRange(codeTypeMembers);
+            CodeTypeMemberCollection fieldMembers = FieldExporter.Generate(type);
+            declaration.Members.AddRange(fieldMembers);
+
+            CodeTypeMemberCollection propertyMembers = PropertyExporter.Generate(type);
+            declaration.Members.AddRange(propertyMembers);
+
+            CodeTypeMemberCollection methodMembers = MethodExporter.Generate(type);
+            declaration.Members.AddRange(methodMembers);
+
+            CodeTypeMemberCollection eventMembers = EventExporter.Generate(type);
+            declaration.Members.AddRange(eventMembers);
 
             return declaration;
         }
@@ -100,6 +110,64 @@ namespace TNRD.Reflectives.Exporters
                 Attributes = MemberAttributes.Public | MemberAttributes.Final,
                 Name = "Construct"
             };
+
+            FieldExporter.Iterate(type, (exporter, info) =>
+            {
+                method.Statements.Add(
+                    new CodeAssignStatement(
+                        new CodeFieldReferenceExpression(
+                            new CodeThisReferenceExpression(),
+                            $"field_{info.Name}"),
+                        new CodeMethodInvokeExpression(
+                            new CodeThisReferenceExpression(),
+                            "CreateField",
+                            new CodePrimitiveExpression(info.Name))));
+            });
+
+            PropertyExporter.Iterate(type, (exporter, info) =>
+            {
+                method.Statements.Add(
+                    new CodeAssignStatement(
+                        new CodeFieldReferenceExpression(
+                            new CodeThisReferenceExpression(),
+                            $"property_{info.Name}"),
+                        new CodeMethodInvokeExpression(
+                            new CodeThisReferenceExpression(),
+                            "CreateProperty",
+                            new CodePrimitiveExpression(info.Name))));
+            });
+
+            MethodExporter.Iterate(type, (exporter, info) =>
+            {
+                List<CodeExpression> parameterExpressions = new List<CodeExpression>
+                {
+                    new CodePrimitiveExpression(info.Name),
+                    new CodeFieldReferenceExpression(
+                        new CodeTypeReferenceExpression(typeof(ReflectiveClass)),
+                        "DEFAULT_FLAGS")
+                };
+
+                ParameterInfo[] parameterInfos = info.GetParameters();
+                foreach (ParameterInfo parameterInfo in parameterInfos)
+                {
+                    parameterExpressions.Add(
+                        new CodeMethodInvokeExpression(
+                            new CodeTypeReferenceExpression(typeof(Type)),
+                            "GetType",
+                            new CodePrimitiveExpression(parameterInfo.ParameterType.AssemblyQualifiedName)));
+                }
+
+                string methodName = exporter.GetMethodName(info);
+                method.Statements.Add(
+                    new CodeAssignStatement(
+                        new CodeFieldReferenceExpression(
+                            new CodeThisReferenceExpression(),
+                            methodName),
+                        new CodeMethodInvokeExpression(
+                            new CodeThisReferenceExpression(),
+                            "CreateMethod",
+                            parameterExpressions.ToArray())));
+            });
 
             declaration.Members.Add(method);
         }
